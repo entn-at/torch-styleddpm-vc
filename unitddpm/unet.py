@@ -130,6 +130,6 @@ if __name__ == '__main__':
         unet = UNet(16, 3, 8, 5, 2)
         inputs = torch.randn(2, 16, 64)
         aux = torch.randn(2, 8)
-        print(unet(inputs, aux).shape)
+        assert unet(inputs, aux).shape == inputs.shape
 
     test()

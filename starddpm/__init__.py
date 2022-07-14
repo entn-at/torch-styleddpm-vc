@@ -8,8 +8,8 @@ from .encoder import StyleEncoder
 from .unet import UNet
 
 
-class UnitDDPMVC(nn.Module):
-    """UNIT-DDPM for Voice conversion.
+class StarDDPMVC(nn.Module):
+    """Multi-domain DDPM for Voice conversion.
     """
     def __init__(self, config: Config):
         """Initializer.

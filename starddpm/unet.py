@@ -17,12 +17,12 @@ class AuxSequential(nn.Module):
         super().__init__()
         self.lists = nn.ModuleList(lists)
 
-    def forward(self, inputs: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, *aux) -> torch.Tensor:
         """Chaining outputs with auxiliary inputs.
         """
         x = inputs
         for module in self.lists:
-            x = module(x, aux)
+            x = module(x, *aux)
         return x
 
 
@@ -122,5 +122,7 @@ if __name__ == '__main__':
         aux = torch.randn(BSIZE, AUX)
         styles = torch.randn(BSIZE, STYLES)
         assert unet(inputs, aux, styles).shape == inputs.shape
+        
+        print('success')
 
     test()

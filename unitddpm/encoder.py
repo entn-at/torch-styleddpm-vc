@@ -41,6 +41,8 @@ class StyleEncoder(nn.Module):
         Args:
             inputs: [torch.float32; [B, C, T]], input tensor, spectrogram.
             code: [torch.long; [B]], domain code.
+        Returns:
+            [torch.float32; [B, styles]], style code.
         """
         x = inputs
         for block in self.blocks:

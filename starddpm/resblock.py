@@ -78,7 +78,7 @@ class ModulatedConv1d(nn.Module):
         super().__init__()
         self.kernels = kernels
         self.style_proj = nn.Linear(styles, channels)
-        self.weights = nn.Parameter(1, channels, channels, kernels)
+        self.weights = nn.Parameter(torch.randn(1, channels, channels, kernels))
 
     def forward(self, inputs: torch.Tensor, styles: torch.Tensor) -> torch.Tensor:
         """Convolve the inputs with modulated weights.
@@ -100,8 +100,8 @@ class ModulatedConv1d(nn.Module):
         return F.conv1d(
             # [1, B x C, T]
             inputs.view(1, -1, timesteps),
-            # [1, B x C, C, K]
-            w.view(1, -1, channels, self.kernels),
+            # [B x C, C, K]
+            w.view(-1, channels, self.kernels),
             padding=self.kernels // 2,
             # dynamic convolution with batch-axis grouping
             groups=bsize).view(bsize, channels, timesteps)

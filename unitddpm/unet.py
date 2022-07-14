@@ -3,39 +3,7 @@ from typing import List
 import torch
 import torch.nn as nn
 
-
-class ResidualBlock(nn.Module):
-    """Convolutional residual block with auxiliary contexts.
-    """
-    def __init__(self, channels: int, kernels: int, aux: int):
-        """Initializer.
-        Args:
-            channels: size of the convolutional channels.
-            kernels: size of the convolutional kernels.
-            aux: size of the auxiliary contexts.
-        """
-        super().__init__()
-        self.preblock = nn.Sequential(
-            nn.Conv1d(channels, channels, kernels, padding=kernels // 2),
-            nn.ReLU(),
-            nn.BatchNorm1d(channels))
-
-        self.proj = nn.Linear(aux, channels, bias=False)
-
-        self.postblock = nn.Sequential(
-            nn.Conv1d(channels, channels, kernels, padding=kernels // 2),
-            nn.ReLU(),
-            nn.BatchNorm1d(channels))
-
-    def forward(self, inputs: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
-        """Transform the inputs.
-        Args:
-            inputs: [torch.float32; [B, C, T]], input 1D feature map.
-            aux: [torch.float32; [B, E]], auxiliary embedding.
-        Returns:
-            [torch.float32; [B, C, T]], residually connected.
-        """
-        return inputs + self.postblock(self.preblock(inputs) + self.proj(aux)[..., None])
+from .resblock import AuxResidualBlock, ModulatedAuxResidualBlock
 
 
 class AuxSequential(nn.Module):
@@ -61,19 +29,26 @@ class AuxSequential(nn.Module):
 class UNet(nn.Module):
     """Spectrogram U-Net for noise estimator.
     """
-    def __init__(self, channels: int, kernels: int, aux: int, stages: int, blocks: int):
+    def __init__(self,
+                 channels: int,
+                 kernels: int,
+                 aux: int,
+                 styles: int,
+                 stages: int,
+                 blocks: int):
         """Initializer.
         Args:
             channels: size of the hidden channels.
             kernels: size of the convolutional kernels.
             aux: size of the auxiliary channels.
+            styles: size of the style vectors.
             stages: the number of the resolution scales.
             blocks: the number of the residual blocks in each stages.
         """
         super().__init__()
         self.dblocks = nn.ModuleList([
             AuxSequential([
-                ResidualBlock(channels * 2 ** i, kernels, aux)
+                AuxResidualBlock(channels * 2 ** i, kernels, aux)
                 for _ in range(blocks)])
             for i in range(stages - 1)])
 
@@ -82,7 +57,8 @@ class UNet(nn.Module):
             nn.Conv1d(channels * 2 ** i, channels * 2 ** (i + 1), kernels, 2, padding=kernels // 2)
             for i in range(stages - 1)])
 
-        self.neck = ResidualBlock(channels * 2 ** (stages - 1), kernels, aux)
+        self.neck = ModulatedAuxResidualBlock(
+            channels * 2 ** (stages - 1), kernels, aux, styles)
 
         self.upsamples = nn.ModuleList([
             # double resolution
@@ -93,15 +69,19 @@ class UNet(nn.Module):
 
         self.ublocks = nn.ModuleList([
             AuxSequential([
-                ResidualBlock(channels * 2 ** i, kernels, aux)
+                ModulatedAuxResidualBlock(channels * 2 ** i, kernels, aux, styles)
                 for _ in range(blocks)])
             for i in range(stages - 2, -1, -1)])
 
-    def forward(self, inputs: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
+    def forward(self,
+                inputs: torch.Tensor,
+                aux: torch.Tensor,
+                styles: torch.Tensor) -> torch.Tensor:
         """Spectrogram U-net.
         Args:
             inputs: [torch.float32; [B, C(=channels), T]], input tensor, spectrogram.
             aux: [torch.float32; [B, A(=aux)]], auxiliary informations, times.
+            styles: [torch.float32; [B, styles]], style vectors.
         Returns:
             [torch.float32; [B, C, T]], transformed.
         """
@@ -116,10 +96,10 @@ class UNet(nn.Module):
             # [B, C x 2^(i + 1), T / 2^(i + 1)]
             x = downsample(x)
         # [B, C x 2^stages, T / 2^stages]
-        x = self.neck(x, aux)
+        x = self.neck(x, aux, styles)
         for i, ublock, upsample in zip(reversed(internals), self.ublocks, self.upsamples):
             # [B, C x 2^i, T / 2^i]
-            x = ublock(upsample(x) + i, aux)
+            x = ublock(upsample(x) + i, aux, styles)
         # [B, C, T]
         return x
 
@@ -127,9 +107,20 @@ class UNet(nn.Module):
 if __name__ == '__main__':
     # Test for U-net
     def test():
-        unet = UNet(16, 3, 8, 5, 2)
-        inputs = torch.randn(2, 16, 64)
-        aux = torch.randn(2, 8)
-        assert unet(inputs, aux).shape == inputs.shape
+        BSIZE = 2
+        CHANNELS = 16
+        AUX = 8
+        STYLES = 4
+        unet = UNet(
+            channels=CHANNELS,
+            kernels=3,
+            aux=AUX,
+            styles=STYLES,
+            stages=5,
+            blocks=2)
+        inputs = torch.randn(BSIZE, CHANNELS, 64)
+        aux = torch.randn(BSIZE, AUX)
+        styles = torch.randn(BSIZE, STYLES)
+        assert unet(inputs, aux, styles).shape == inputs.shape
 
     test()

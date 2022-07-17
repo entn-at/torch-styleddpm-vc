@@ -50,7 +50,7 @@ class VCDataset(SpeechSet):
             pitch = AF.detect_pitch_frequency(
                 torch.tensor(speech, device=self.device), self.reader.SR)
             # [1, 1, T // hop]
-            pitch = F.interpolate(pitch[None, None], size=mel.shape[0], mode='nearest')
+            pitch = F.interpolate(pitch[None, None], size=mel.shape[0], mode='linear')
             # [T // hop], squeezing
             pitch = pitch[0, 0].cpu().numpy()
         return ids, pitch, mel

@@ -87,17 +87,13 @@ class TrainingWrapper:
         steps = torch.randint(
             self.config.model.steps, (mel.shape[0],), device=mel.device)
         # [B, mel, T]
-        prev_mean, prev_std = self.model.diffusion(mel, steps - 1)
+        mean, std = self.model.diffusion(mel, steps)
         # [B, mel, T]
-        prev = prev_mean + torch.randn_like(prev_mean) * prev_std[:, None, None]
-        # [B, mel, T], [B]
-        base_mean, base_std = self.model.diffusion(prev, steps, next_=True)
-        # [B, mel, T]
-        base = base_mean + torch.randn_like(base_mean) * base_std[:, None, None]
+        base = mean + torch.randn_like(mean) * std[:, None, None]
         # [B, mel, T]
         denoised = self.model.denoise(base, mel, steps)
         # []
-        noise_estim = (denoised - prev).square().mean()
+        noise_estim = (denoised - mel).square().mean()
         # total loss
         loss = schedule_loss + noise_estim
         return loss, {'sched': schedule_loss.item(), 'estim': noise_estim.item()}

@@ -9,6 +9,14 @@ class Config:
         """
         self.mel = mel
 
+        # diffusion steps
+        self.steps = 50
+
+        # schedules
+        self.internals = 1024
+        self.logit_max = 10
+        self.logit_min = -10
+
         # embedder
         self.pe = 128
         self.embeddings = 512

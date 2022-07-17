@@ -23,6 +23,8 @@ class TrainConfig:
         self.num_workers = 4
         self.pin_memory = True
 
+        self.split = -100
+
         # train iters
         self.epoch = 1000
 

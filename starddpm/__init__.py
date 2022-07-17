@@ -46,13 +46,15 @@ class StarDDPMVC(nn.Module):
     def forward(self,
                 context: torch.Tensor,
                 styles: torch.Tensor,
-                signal: Optional[torch.Tensor] = None) \
+                signal: Optional[torch.Tensor] = None,
+                code: Optional[torch.Tensor] = None) \
             -> Tuple[torch.Tensor, List[np.ndarray]]:
         """Generated waveform conditioned on mel-spectrogram.
         Args:
             context: [torch.float32; [B, mel, T]], context mel-spectrogram.
             styles: [torch.float32; [B, mel, T] or [B, styles]], style vectors.
             signal: [torch.float32; [B, mel, T]], initial noise.
+            code: [torch.long; [B]], target domain codes.
         Returns:
             [torch.float32; [B, mel, T]], denoised result.
             S x [np.float32; [B, mel, T]], internal representations.
@@ -60,8 +62,10 @@ class StarDDPMVC(nn.Module):
         # [B, mel, T]
         signal = signal or torch.randn_like(context)
         if styles.dim() == 3:
+            assert code is not None, \
+                'style encoding needs domain code vectors'
             # [B, styles]
-            styles = self.encoder(styles)
+            styles = self.encoder(styles, code)
 
         # S x [B, mel, T]
         ir = [signal.cpu().detach().numpy()]

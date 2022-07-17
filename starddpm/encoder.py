@@ -9,6 +9,7 @@ class StyleEncoder(nn.Module):
     """Encode the style token from inputs.
     """
     def __init__(self,
+                 mel: int,
                  styles: int,
                  domains: int,
                  channels: int,
@@ -17,6 +18,7 @@ class StyleEncoder(nn.Module):
                  blocks: int):
         """Initializer.
         Args:
+            mel: size of the mel filter channels.
             styles: size of the style tokens.
             domains: the number of the output domains.
             channels: size of the convolutional channels.
@@ -26,6 +28,10 @@ class StyleEncoder(nn.Module):
         """
         super().__init__()
         self.styles, self.domains = styles, domains
+        self.proj_inputs = nn.Sequential(
+            nn.Conv1d(mel, channels, 1),
+            nn.ReLU())
+
         self.blocks = nn.ModuleList([
             ResidualBlock(channels, kernels, blocks)
             for _ in range(stages)])
@@ -39,12 +45,12 @@ class StyleEncoder(nn.Module):
     def forward(self, inputs: torch.Tensor, code: torch.Tensor) -> torch.Tensor:
         """Generate the style code.
         Args:
-            inputs: [torch.float32; [B, C, T]], input tensor, spectrogram.
+            inputs: [torch.float32; [B, mel, T]], input spectrogram.
             code: [torch.long; [B]], domain code.
         Returns:
             [torch.float32; [B, styles]], style code.
         """
-        x = inputs
+        x = self.proj_inputs(inputs)
         for block in self.blocks:
             # [B, C, T // 2 ** i]
             x = F.interpolate(block(x), scale_factor=0.5, mode='nearest')

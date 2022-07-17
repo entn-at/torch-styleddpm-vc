@@ -17,14 +17,14 @@ class StarDDPMVC(nn.Module):
         """
         super().__init__()
         self.proj_inputs = nn.Sequential(
-            nn.Conv1d(config.mel * 2, config.channels * 2, 1, groups=2),
+            nn.Conv1d(config.mel, config.channels, 1),
             nn.ReLU())
 
         self.embedder = Embedder(
             config.pe, config.embeddings, config.steps, config.mappings)
 
         self.encoder = StyleEncoder(
-            config.styles, config.domains, config.channels, config.kernels,
+            config.mel, config.styles, config.domains, config.channels, config.kernels,
             config.style_stages, config.style_blocks)
 
         self.unet = UNet(
@@ -37,25 +37,21 @@ class StarDDPMVC(nn.Module):
 
     def denoise(self,
                 signal: torch.Tensor,
-                outpart: torch.Tensor,
-                code: torch.Tensor,
+                styles: torch.Tensor,
                 steps: torch.Tensor) -> torch.Tensor:
         """Denoise the signal w.r.t. outpart signal.
         Args:
             signal: [torch.float32; [B, mel, T]], input signal.
-            outpart: [torch.float32; [B, mel, T]], counter part signal.
-            code: [torch.long; [B]], domain code.
+            styles: [torch.float32; [B, styles]], style vector.
             steps: [torch.long; [B]], diffusion steps, zero-based.
         Returns:
             [torch.float32; [B, mel, T]], denoised signal.
         """
         # [B, C, T]
-        x, y = self.proj_inputs(torch.cat([signal, outpart], dim=1)).chunk(2, dim=1)
-        # [B, styles]
-        style = self.encoder(y, code)
+        x = self.proj_inputs(signal)
         # [B, E]
         embed = self.embedder(steps)
         # [B, C, T]
-        x = self.unet(x, embed, style)
+        x = self.unet(x, embed, styles)
         # [B, mel, T]
         return self.proj_outputs(x)

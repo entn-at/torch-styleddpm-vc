@@ -67,9 +67,11 @@ class StarDDPMVC(nn.Module):
         ir = [signal.cpu().detach().numpy()]
         # zero-based step
         for step in range(self.steps - 1, -1, -1):
+            # [1]
+            step = torch.tensor([step], device=signal.device)
             # [B, mel, T], [B]
             mean, std = self.inverse(
-                signal, context, styles, torch.tensor([step], device=signal.device))
+                signal, self.diffusion(context, step), styles, step)
             # [B, mel, T]
             signal = mean + torch.randn_like(mean) * std[:, None, None]
             ir.append(signal.cpu().detach().numpy())
@@ -112,7 +114,7 @@ class StarDDPMVC(nn.Module):
         """Inverse process, single step denoise.
         Args:
             signal: [torch.float32; [B, mel, T]], input signal, z_{t}.
-            context: [torch.float32; [B, mel, T]], context spectrogram.
+            context: [torch.float32; [B, mel, T]], noised context spectrogram, z_{C, t}
             styles: [torch.float32; [B, styles]], style vector.
             steps: [torch.long; [B]], t, diffusion steps, zero-based.
         Returns:

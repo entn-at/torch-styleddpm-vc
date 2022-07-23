@@ -11,8 +11,8 @@ from .scheduler import Scheduler
 from .unet import UNet
 
 
-class StarDDPMVC(nn.Module):
-    """Multi-domain DDPM for Voice conversion.
+class StyleDDPMVC(nn.Module):
+    """Style-based DDPM for Voice conversion.
     """
     def __init__(self, config: Config):
         """Initializer.

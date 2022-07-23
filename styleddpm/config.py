@@ -1,5 +1,5 @@
 class Config:
-    """Configuration for StarDDPM-VC.
+    """Configuration for StyleDDPM-VC.
     """
     def __init__(self, mel: int):
         """Initializer.

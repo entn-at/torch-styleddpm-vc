@@ -1,5 +1,5 @@
 from speechset.config import Config as DataConfig
-from starddpm.config import Config as ModelConfig
+from styleddpm.config import Config as ModelConfig
 
 
 class TrainConfig:

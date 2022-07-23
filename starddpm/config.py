@@ -1,11 +1,10 @@
 class Config:
     """Configuration for StarDDPM-VC.
     """
-    def __init__(self, mel: int, speakers: int):
+    def __init__(self, mel: int):
         """Initializer.
         Args:
             mel: size of the spectrogram features.
-            speakers: the number of the speakers.
         """
         self.mel = mel
 
@@ -30,6 +29,5 @@ class Config:
 
         # style encoder
         self.styles = 32
-        self.domains = speakers
         self.style_blocks = 2
         self.style_kernels = 3

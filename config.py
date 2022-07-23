@@ -1,4 +1,3 @@
-from disc.config import Config as DiscConfig
 from speechset.config import Config as DataConfig
 from starddpm.config import Config as ModelConfig
 
@@ -45,15 +44,10 @@ class TrainConfig:
 class Config:
     """Integrated configuration.
     """
-    def __init__(self, speakers: int = 1):
-        """Initializer.
-        Args:
-            speakers: the number of the speakers.
-        """
+    def __init__(self):
         self.data = DataConfig(batch=None)
         self.train = TrainConfig(self.data.sr, self.data.hop)
-        self.model = ModelConfig(self.data.mel, speakers)
-        self.disc = DiscConfig(self.model.mel, speakers)
+        self.model = ModelConfig(self.data.mel)
 
     def update_speakers(self, speakers: int):
         """Update the number of the speakers.

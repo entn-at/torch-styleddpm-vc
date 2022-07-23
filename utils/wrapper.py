@@ -5,19 +5,19 @@ import torch
 import torch.nn.functional as F
 
 from config import Config
-from starddpm import StarDDPMVC
+from styleddpm import StyleDDPMVC
 
 
 class TrainingWrapper:
     """Training wrapper.
     """
     def __init__(self,
-                 model: StarDDPMVC,
+                 model: StyleDDPMVC,
                  config: Config,
                  device: torch.device):
         """Initializer.
         Args:
-            model: StarDDPM model.
+            model: StyleDDPM-VC model.
             config: training configurations.
             device: torch device.
         """
@@ -48,15 +48,16 @@ class TrainingWrapper:
             randomly segmented spectrogram and audios.
         """
         # [B], [B, T], [B, T, mel], [B]
-        ids, _, pitch, mel, _, lengths = bunch
+        ids, pitch, mel, lengths = bunch
         # [B]
         start = np.random.randint(lengths - self.config.train.seglen)
-        # [B, S]
+        # [B, seglen]
         pitch = np.array(
             [p[s:s + self.config.train.seglen] for p, s in zip(pitch, start)])
-        # [B, S, mel]
+        # [B, seglen, mel]
         mel = np.array(
             [m[s:s + self.config.train.seglen] for m, s in zip(mel, start)])
+        # [B], [B, seglen], [B, mel, seglen]
         return ids, pitch, mel.transpose(0, 2, 1)
 
     def compute_loss(self, bunch: List[np.ndarray]) \
@@ -86,41 +87,78 @@ class TrainingWrapper:
         # [B], for shuffling
         indices = (np.arange(bsize) + start) % bsize
         # [B, styles]
-        style = self.model.encoder(mel, ids)
+        avgpit, style = self.model.encoder(mel)
 
-        ## 2. Cyclic noise estimation
+        ## 1. Reconstruction
         # [B], zero-based
         steps = torch.randint(
             self.config.model.steps, (mel.shape[0],), device=mel.device)
         # [B, mel, T]
         mean, std = self.model.diffusion(mel, steps)
         # [B, mel, T]
-        base = mean + torch.randn_like(mean) * std[:, None, None]
+        mel_t = mean + torch.randn_like(mean) * std[:, None, None]
         # [B, mel, T]
-        converted = self.model.denoise(base, mel, style[indices], steps)
-
-
-
+        mel_0 = self.model.denoise(mel_t, mel, style, steps)
         # []
-        noise_estim = (denoised - mel).square().mean()
+        noise_estim = F.mse_loss(mel, mel_0)
 
-        ## 3. Cycle consistency
-
-
-        ## 3. Average pitch estimation and speaker classification
-        # [B, domains], [B]
-        logits, avgpit = self.disc(denoised)
+        ## 2. Cycle consistency
+        # [B, mel, T], unpaired generation
+        unit_0 = self.model.denoise(
+            torch.randn_like(mel),
+            mel,
+            style[indices],
+            torch.tensor([self.config.model.steps] * bsize, device=mel.device))
+        # [B, mel, T]
+        mean, std = self.model.diffusion(unit_0, steps)
+        # [B, mel, T]
+        unit_t = mean + torch.randn_like(mean) * std[:, None, None]
         # []
-        spkclf = F.cross_entropy(logits, ids)
+        unit_estim = F.mse_loss(
+            unit_0, self.model.denoise(unit_t, unit_0, style[indices], steps))
+        # []
+        cycle_estim = \
+            F.mse_loss(mel, self.model.denoise(mel_t, unit_0, style, steps)) + \
+            F.mse_loss(unit_0, self.model.denoise(unit_t, mel, style[indices], steps))
 
-        ## 4. Cycle consistency
+        ## 3. Style reconstruction
+        def contrast(a, b):
+            # [B, B]
+            confusion = torch.matmul(
+                F.normalize(a, p=2, dim=-1),
+                F.normalize(b, p=2, dim=-1).T)
+            # [B]
+            arange = torch.arange(bsize)
+            # [B], diagonal selection and negative case contrast
+            cont = confusion[arange, arange] - torch.logsumexp(
+                confusion.masked_fill(ids[:, None] == ids, -np.inf), dim=-1)
+            # []
+            return -cont.mean()
+        # [B], [B, styles]
+        avgpit_re, style_re = self.model.encoder(mel_0)
+        # [B], [B, styles]
+        avgpit_unit, style_unit = self.model.encoder(unit_0)
+        # []
+        style_cont = contrast(style, style_re) + contrast(style[indices], style_unit)
 
-        ## 5. ASR-guiding phonetic structure preservation
-
-        ## 6. Style reconstruction
-
-        ## 7. Norm consistency
+        ## 3. Average pitch estimation
+        # [B], non-zero average
+        avgpit_gt = pitch.sum(axis=-1) / (pitch > 0).sum(axis=-1).clamp_min(1)
+        # [B]
+        pitch_estim = \
+            F.mse_loss(avgpit_gt, avgpit) + \
+            F.mse_loss(avgpit_gt, avgpit_re) + \
+            F.mse_loss(avgpit_gt[indices], avgpit_unit)
 
         # total loss
-        loss = schedule_loss + noise_estim + spkclf
-        return loss, {'sched': schedule_loss.item(), 'estim': noise_estim.item()}
+        loss = schedule_loss + \
+            noise_estim + unit_estim + \
+            cycle_estim + \
+            style_cont + pitch_estim
+        return loss, {
+            'sched': schedule_loss.item(),
+            'noise-estim': noise_estim.item(),
+            'unit-estim': unit_estim.item(),
+            'cycle-estim': cycle_estim.item(),
+            'style-cont': style_cont.item(),
+            'pitch-estim': pitch_estim.item()}

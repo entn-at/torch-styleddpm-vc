@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -40,14 +42,16 @@ class StyleEncoder(nn.Module):
 
         self.proj = nn.Sequential(
             nn.ReLU(),
-            nn.Linear(channels, domains * styles))
+            nn.Linear(channels, domains * styles + 1))
 
-    def forward(self, inputs: torch.Tensor, code: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, code: torch.Tensor) \
+            -> Tuple[torch.Tensor, torch.Tensor]:
         """Generate the style code.
         Args:
             inputs: [torch.float32; [B, mel, T]], input spectrogram.
             code: [torch.long; [B]], domain code.
         Returns:
+            [torch.float32; [B]], average pitch level.
             [torch.float32; [B, styles]], style code.
         """
         x = self.proj_inputs(inputs)
@@ -58,7 +62,9 @@ class StyleEncoder(nn.Module):
         x = self.neck(x).mean(dim=-1)
         # B
         bsize = x.shape[0]
-        # [B, domains, styles]
-        x = self.proj(x).view(bsize, self.domains, self.styles)
+        # [B, domains x styles + 1]
+        x = self.proj(x)
+        # [B], [B, domains, styles]
+        pitch, styles = x[:, 0], x[:, 1:].view(bsize, self.domains, self.styles)
         # [B, styles]
-        return x[torch.arange(bsize), code]
+        return pitch, styles[torch.arange(bsize), code]

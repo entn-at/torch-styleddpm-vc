@@ -65,7 +65,7 @@ class StarDDPMVC(nn.Module):
             assert code is not None, \
                 'style encoding needs domain code vectors'
             # [B, styles]
-            styles = self.encoder(styles, code)
+            _, styles = self.encoder(styles, code)
 
         # S x [B, mel, T]
         ir = [signal.cpu().detach().numpy()]

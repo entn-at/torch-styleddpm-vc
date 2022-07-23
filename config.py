@@ -49,14 +49,6 @@ class Config:
         self.train = TrainConfig(self.data.sr, self.data.hop)
         self.model = ModelConfig(self.data.mel)
 
-    def update_speakers(self, speakers: int):
-        """Update the number of the speakers.
-        Args:
-            speakers: the number of the speakers.
-        """
-        self.model.domains = speakers
-        self.disc.domains = speakers
-
     def dump(self):
         """Dump configurations into serializable dictionary.
         """

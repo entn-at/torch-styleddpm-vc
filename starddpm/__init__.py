@@ -29,7 +29,7 @@ class StarDDPMVC(nn.Module):
             config.pe, config.embeddings, config.steps, config.mappings)
 
         self.encoder = StyleEncoder(
-            config.mel, config.styles, config.domains, config.channels, config.kernels,
+            config.mel, config.styles, config.channels, config.kernels,
             config.style_stages, config.style_blocks)
 
         self.unet = UNet(
@@ -46,15 +46,13 @@ class StarDDPMVC(nn.Module):
     def forward(self,
                 context: torch.Tensor,
                 styles: torch.Tensor,
-                signal: Optional[torch.Tensor] = None,
-                code: Optional[torch.Tensor] = None) \
+                signal: Optional[torch.Tensor] = None) \
             -> Tuple[torch.Tensor, List[np.ndarray]]:
         """Generated waveform conditioned on mel-spectrogram.
         Args:
             context: [torch.float32; [B, mel, T]], context mel-spectrogram.
             styles: [torch.float32; [B, mel, T] or [B, styles]], style vectors.
             signal: [torch.float32; [B, mel, T]], initial noise.
-            code: [torch.long; [B]], target domain codes.
         Returns:
             [torch.float32; [B, mel, T]], denoised result.
             S x [np.float32; [B, mel, T]], internal representations.
@@ -62,11 +60,8 @@ class StarDDPMVC(nn.Module):
         # [B, mel, T]
         signal = signal or torch.randn_like(context)
         if styles.dim() == 3:
-            assert code is not None, \
-                'style encoding needs domain code vectors'
             # [B, styles]
-            _, styles = self.encoder(styles, code)
-
+            _, styles = self.encoder(styles)
         # S x [B, mel, T]
         ir = [signal.cpu().detach().numpy()]
         # zero-based step

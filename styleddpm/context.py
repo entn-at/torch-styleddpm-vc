@@ -47,7 +47,7 @@ class ContextEncoder(nn.Module):
         # [B, N(=F x S), C]
         flat = patches.view(bsize, freqs * temps, channels)
         if ratio is not None:
-            # [B, N'(=N x (1 - ratio)), C]
+            # [B, N'(=N x (1 - ratio)), C], [B, N', C]
             flat, selects = self.random_mask(flat, ratio)
 
         # operation
@@ -57,7 +57,7 @@ class ContextEncoder(nn.Module):
             # [B, N, C]
             flat = self.scatter(flat, selects)
         # [B, C, T]
-        return self.recover(flat, freqs, temps)
+        return self.reorder(flat, freqs, temps)
 
     def embed(self, spec: torch.Tensor) -> torch.Tensor:
         """Flatten the spectrogram and apply patch embedding.
@@ -80,8 +80,8 @@ class ContextEncoder(nn.Module):
             .permute(0, 1, 3, 2, 4)
             .view(bsize, freqs, temps, -1))
 
-    def recover(self, flat: torch.Tensor, freqs: int, temps: int) -> torch.Tensor:
-        """Recover the flattened embeddings to original temporal axis.
+    def reorder(self, flat: torch.Tensor, freqs: int, temps: int) -> torch.Tensor:
+        """Reorder the flattened embeddings to original temporal axis.
         Args:
             flat: [torch.float32; [B, N(=freqs x temps), C]], flat embeddings.
             freqs: F, mel // patch.
@@ -108,34 +108,29 @@ class ContextEncoder(nn.Module):
             ratio: drop ratio.
         Returns:
             [torch.float32; [B, N x (1 - ratio), C]], randomly dropped.
+            [torch.float32; [B, S, C]], selects.
         """
-        # B, N, _
-        bsize, patches, _ = flat.shape
+        # B, N, C
+        bsize, patches, channels = flat.shape
         # S(=N x (1 - ratio))
         samples = int(patches * (1 - ratio))
-        # [B, S]
+        # [B, S, C]
         selects = torch.stack([
             torch.randperm(patches, device=flat.device)[:samples]
-            for _ in range(bsize)], dim=0)
-        # [B, S, C]
-        sampled = torch.stack([
-            row[s] for row, s in zip(flat, selects)], dim=0)
-        return sampled, selects
+            for _ in range(bsize)], dim=0)[..., None].repeat(1, 1, channels)
+        return flat.gather(1, selects), selects
 
     def scatter(self, sampled: torch.Tensor, selects: torch.Tensor, n: int) \
             -> Tuple[torch.Tensor, torch.Tensor]:
         """Scatter to given indices, fill blanks with `mask_token`.
         Args:
             sampled: [torch.float32; [B, S, C]], randomly dropped.
-            selects: [torch.float32; [B, S]], indices.
+            selects: [torch.float32; [B, S, C]], indices.
             n: N, original sizes.
         Returns:
             [torch.float32; [B, N, C]], recovered.
         """
-        # C
-        channels = sampled.shape[-1]
-        # [N, C]
-        base = self.mask_token[None].repeat(n, 1)
         # [B, N, C]
-        ## TODO: Validation check
-        return base.scatter(1, selects[..., None].repeat(1, 1, channels), sampled)
+        base = self.mask_token[None, None].repeat(sampled.shape[0], n, 1)
+        # [B, N, C]
+        return base.scatter(1, selects, sampled)

@@ -36,7 +36,7 @@ class StyleDDPMVC(nn.Module):
             config.style_stages,
             config.style_blocks)
 
-        self.contextualize = ContextEncoder(
+        self.masked_encoder = ContextEncoder(
             config.mel,
             config.patch,
             config.pe,
@@ -161,19 +161,23 @@ class StyleDDPMVC(nn.Module):
                 signal: torch.Tensor,
                 context: torch.Tensor,
                 styles: torch.Tensor,
-                steps: torch.Tensor) -> torch.Tensor:
+                steps: torch.Tensor,
+                mask_ratio: Optional[float] = None) -> torch.Tensor:
         """Denoise the signal w.r.t. outpart signal.
         Args:
             signal: [torch.float32; [B, mel, T]], input signal.
             context: [torch.float32; [B, mel, T]], context spectrogram.
             styles: [torch.float32; [B, styles]], style vector.
             steps: [torch.long; [B]], diffusion steps, zero-based.
+            mask_ratio: masking ratio for masked auto encoder.
         Returns:
             [torch.float32; [B, mel, T]], denoised signal.
         """
         # [B, E]
         embed = self.embedder(steps)
+        # [B, mel, T]
+        context = self.masked_encoder(context, ratio=mask_ratio)
         # [B, C, T]
-        x = self.unet(signal, embed, styles)
+        x = self.unet(signal, embed, styles, context)
         # [B, mel, T]
         return self.proj_outputs(x)

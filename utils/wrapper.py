@@ -126,16 +126,16 @@ class TrainingWrapper:
             F.mse_loss(unit_0, self.model.denoise(unit_t, mel_c, style[indices], steps))
 
         ## 3. Style reconstruction
-        def contrast(a, b):
+        def contrast(a, b, i):
             # [B, B]
             confusion = torch.matmul(
                 F.normalize(a, p=2, dim=-1),
                 F.normalize(b, p=2, dim=-1).T)
             # [B]
-            arange = torch.arange(bsize)
+            arange = torch.arange(confusion.shape[0])
             # [B], diagonal selection and negative case contrast
             cont = confusion[arange, arange] - torch.logsumexp(
-                confusion.masked_fill(ids[:, None] == ids, -np.inf), dim=-1)
+                confusion.masked_fill(i[:, None] == i, -np.inf), dim=-1)
             # []
             return -cont.mean()
         # [B], [B, styles]
@@ -143,7 +143,9 @@ class TrainingWrapper:
         # [B], [B, styles]
         avgpit_unit, style_unit = self.model.encoder(unit_0)
         # []
-        style_cont = contrast(style, style_re) + contrast(style[indices], style_unit)
+        style_cont = \
+            contrast(style, style_re, ids) + \
+            contrast(style[indices], style_unit, ids[indices])
 
         ## 3. Average pitch estimation
         # [B], non-zero average

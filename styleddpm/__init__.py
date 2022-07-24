@@ -40,7 +40,6 @@ class StyleDDPMVC(nn.Module):
             config.mel,
             config.patch,
             config.pe,
-            config.channels,
             config.heads,
             config.ffns,
             config.dropout,

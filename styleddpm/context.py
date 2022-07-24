@@ -13,7 +13,6 @@ class ContextEncoder(nn.Module):
                  mel: int,
                  patch: int,
                  pe: int,
-                 channels: int,
                  heads: int,
                  ffns: int,
                  dropout: float,
@@ -23,7 +22,6 @@ class ContextEncoder(nn.Module):
             mel: size of the mel filterbank.
             patch: size of the patch, equal on frequency axis and temporal axis.
             pe: size of the positional encodings.
-            channels: size of the hidden channels.
             haes: the number of the attention heads.
             ffns: size of the feed-forward network hidden channels.
             dropout: dropout rates.
@@ -31,6 +29,8 @@ class ContextEncoder(nn.Module):
         """
         super().__init__()
         self.patch = patch
+        # prevserving capacity
+        channels = patch * patch
         # 12 seconds max
         self.register_buffer('pe', Embedder.sinusoidal(1000, pe))
         self.register_buffer('mask_token', torch.randn(channels))
@@ -40,8 +40,7 @@ class ContextEncoder(nn.Module):
         self.proj_pefreq = nn.Linear(pe, channels, bias=False)
         self.proj_petemp = nn.Linear(pe, channels)
 
-        self.proj_out = nn.Conv1d(
-            int(mel * channels * patch ** -2), channels, 1)
+        self.proj_out = nn.Conv1d(mel, mel, 1)
 
         self.encoder = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(
@@ -59,7 +58,7 @@ class ContextEncoder(nn.Module):
             ratio: masking ratio,
                 mask the spectrogram before feed to encoder if ratio provided.
         Returns:
-            [torch.float32; [B, C, T]], encoded.
+            [torch.float32; [B, mel, T]], encoded.
         """
         # [B, F, S, C]
         patches = self.embed(spec)

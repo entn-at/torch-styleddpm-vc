@@ -43,13 +43,13 @@ class AuxResidualBlock(nn.Module):
             context: size of the context vector.
         """
         super().__init__()
-        self.proj = nn.Linear(aux, channels, bias=False)
+        self.proj_context = nn.Conv1d(context, channels, 1)
         self.preblock = nn.Sequential(
             nn.Conv1d(channels, channels, kernels, padding=kernels // 2),
             nn.ReLU(),
             nn.BatchNorm1d(channels))
         
-        self.proj_context = nn.Conv1d(context, channels, 1, bias=False)
+        self.proj = nn.Linear(aux, channels, bias=False)
 
         self.postblock = nn.Sequential(
             nn.Conv1d(channels, channels, kernels, padding=kernels // 2),
@@ -61,16 +61,16 @@ class AuxResidualBlock(nn.Module):
         Args:
             inputs: [torch.float32; [B, C, T]], input 1D feature map.
             aux: [torch.float32; [B, E]], auxiliary embedding.
-            context: [torch.float32; [B, mel, T]], context vectors.
+            context: [torch.float32; [B, mel, T']], context vectors.
         Returns:
             [torch.float32; [B, C, T]], residually connected.
         """
         # [B, C, T]
-        ir = self.preblock(inputs + self.proj(aux)[..., None])
-        # [B, C, T]
         context = self.proj_context(
-            F.interpolate(context, size=ir.shape[-1], mode='nearest'))
-        return inputs + self.postblock(ir + context)
+            F.interpolate(context, size=inputs.shape[-1], mode='nearest'))
+        # [B, C, T]
+        return inputs + self.postblock(
+            self.preblock(inputs + context) + self.proj(aux)[..., None])
 
 
 class ModulatedConv1d(nn.Module):

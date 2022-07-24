@@ -156,13 +156,19 @@ class TrainingWrapper:
             F.mse_loss(avgpit_gt, avgpit_re) + \
             F.mse_loss(avgpit_gt[indices], avgpit_unit)
 
+        ## 4. Masked autoencoder reconstruction
+        # []
+        mae_rctor = F.mse_loss(mel, self.model.masked_encoder.decoder(mel_c))
+
         # total loss
         loss = schedule_loss + \
             noise_estim + unit_estim + \
             cycle_estim + \
-            style_cont + pitch_estim
+            style_cont + pitch_estim + \
+            mae_rctor
         return loss, {
             'sched': schedule_loss.item(),
+            'mae-rctor': mae_rctor.item(),
             'noise-estim': noise_estim.item(),
             'unit-estim': unit_estim.item(),
             'cycle-estim': cycle_estim.item(),

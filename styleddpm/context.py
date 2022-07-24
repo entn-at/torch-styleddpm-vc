@@ -70,6 +70,7 @@ class ContextEncoder(nn.Module):
         # [B, N(=F x S), C]
         flat = patches.view(bsize, freqs * temps, channels)
         if ratio is not None:
+            assert 0. < ratio < 1., 'ratio should be in open interval (0., 1.)'
             # [B, N'(=N x (1 - ratio)), C], [B, N', C]
             flat, selects = self.random_mask(flat, ratio)
         # [B, N, C]

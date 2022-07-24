@@ -34,35 +34,43 @@ class ResidualBlock(nn.Module):
 class AuxResidualBlock(nn.Module):
     """Convolutional residual block with auxiliary contexts.
     """
-    def __init__(self, channels: int, kernels: int, aux: int):
+    def __init__(self, channels: int, kernels: int, aux: int, context: int):
         """Initializer.
         Args:
             channels: size of the convolutional channels.
             kernels: size of the convolutional kernels.
             aux: size of the auxiliary contexts.
+            context: size of the context vector.
         """
         super().__init__()
+        self.proj = nn.Linear(aux, channels, bias=False)
         self.preblock = nn.Sequential(
             nn.Conv1d(channels, channels, kernels, padding=kernels // 2),
             nn.ReLU(),
             nn.BatchNorm1d(channels))
-
-        self.proj = nn.Linear(aux, channels, bias=False)
+        
+        self.proj_context = nn.Conv1d(context, channels, 1, bias=False)
 
         self.postblock = nn.Sequential(
             nn.Conv1d(channels, channels, kernels, padding=kernels // 2),
             nn.ReLU(),
             nn.BatchNorm1d(channels))
 
-    def forward(self, inputs: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, aux: torch.Tensor, context: torch.Tensor) -> torch.Tensor:
         """Transform the inputs.
         Args:
             inputs: [torch.float32; [B, C, T]], input 1D feature map.
             aux: [torch.float32; [B, E]], auxiliary embedding.
+            context: [torch.float32; [B, mel, T]], context vectors.
         Returns:
             [torch.float32; [B, C, T]], residually connected.
         """
-        return inputs + self.postblock(self.preblock(inputs) + self.proj(aux)[..., None])
+        # [B, C, T]
+        ir = self.preblock(inputs + self.proj(aux)[..., None])
+        # [B, C, T]
+        context = self.proj_context(
+            F.interpolate(context, size=ir.shape[-1], mode='nearest'))
+        return inputs + self.postblock(ir + context)
 
 
 class ModulatedConv1d(nn.Module):

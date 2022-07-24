@@ -24,6 +24,7 @@ class Config:
         # unet
         self.channels = 128
         self.kernels = 3
+        self.longrange = 11
         self.stages = 4
         self.blocks = 2
 

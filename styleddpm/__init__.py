@@ -49,6 +49,7 @@ class StyleDDPMVC(nn.Module):
             config.mel,
             config.channels,
             config.kernels,
+            config.longrange,
             config.embeddings,
             config.styles,
             config.stages,

@@ -33,6 +33,7 @@ class UNet(nn.Module):
                  mel: int,
                  channels: int,
                  kernels: int,
+                 longrange: int,
                  aux: int,
                  styles: int,
                  stages: int,
@@ -42,6 +43,7 @@ class UNet(nn.Module):
             mel: size of the mel filter channels.
             channels: size of the hidden channels.
             kernels: size of the convolutional kernels.
+            longrange: size of the long-range kernels for masked context smoothing.
             aux: size of the auxiliary channels.
             styles: size of the style vectors.
             stages: the number of the resolution scales.
@@ -49,9 +51,11 @@ class UNet(nn.Module):
         """
         super().__init__()
         self.proj = nn.Conv1d(mel, channels, 1)
+        self.smoother = nn.Conv1d(
+            mel, mel, longrange, groups=mel, padding=longrange // 2, bias=False)
         self.dblocks = nn.ModuleList([
             AuxSequential([
-                AuxResidualBlock(channels * 2 ** i, kernels, aux)
+                AuxResidualBlock(channels * 2 ** i, kernels, aux, mel)
                 for _ in range(blocks)])
             for i in range(stages - 1)])
 
@@ -79,22 +83,26 @@ class UNet(nn.Module):
     def forward(self,
                 inputs: torch.Tensor,
                 aux: torch.Tensor,
-                styles: torch.Tensor) -> torch.Tensor:
+                styles: torch.Tensor,
+                context: torch.Tensor) -> torch.Tensor:
         """Spectrogram U-net.
         Args:
             inputs: [torch.float32; [B, C(=channels), T]], input tensor, spectrogram.
             aux: [torch.float32; [B, A(=aux)]], auxiliary informations, times.
             styles: [torch.float32; [B, styles]], style vectors.
+            context: [torch.float32; [B, mel, T]], contextualized vectors.
         Returns:
             [torch.float32; [B, C, T]], transformed.
         """
         # [B, C, T]
         x = self.proj(inputs)
+        # [B, mel, T]
+        context = self.smoother(context)
         # (stages - 1) x [B, C x 2^i, T / 2^i]
         internals = []
         for dblock, downsample in zip(self.dblocks, self.downsamples):
             # [B, C x 2^i, T / 2^i]
-            x = dblock(x, aux)
+            x = dblock(x, aux, context)
             internals.append(x)
             # [B, C x 2^(i + 1), T / 2^(i + 1)]
             x = downsample(x)

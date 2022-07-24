@@ -83,6 +83,8 @@ class StyleDDPMVC(nn.Module):
         if styles.dim() == 3:
             # [B, styles]
             _, styles = self.encoder(styles)
+        # [B, mel, T], contextualized.
+        context = self.masked_encoder(context)
         # S x [B, mel, T]
         ir = [signal.cpu().detach().numpy()]
         # zero-based step
@@ -133,7 +135,8 @@ class StyleDDPMVC(nn.Module):
         """Inverse process, single step denoise.
         Args:
             signal: [torch.float32; [B, mel, T]], input signal, z_{t}.
-            context: [torch.float32; [B, mel, T]], context spectrogram.
+            context: [torch.float32; [B, mel, T]], contextualized vectors
+                , `masked_encoder` aplied.
             styles: [torch.float32; [B, styles]], style vector.
             steps: [torch.long; [B]], t, diffusion steps, zero-based.
         Returns:
@@ -161,12 +164,12 @@ class StyleDDPMVC(nn.Module):
                 signal: torch.Tensor,
                 context: torch.Tensor,
                 styles: torch.Tensor,
-                steps: torch.Tensor,
-                mask_ratio: Optional[float] = None) -> torch.Tensor:
+                steps: torch.Tensor) -> torch.Tensor:
         """Denoise the signal w.r.t. outpart signal.
         Args:
             signal: [torch.float32; [B, mel, T]], input signal.
-            context: [torch.float32; [B, mel, T]], context spectrogram.
+            context: [torch.float32; [B, mel, T]], contextualized vectors
+                , `masked_encoder` aplied.
             styles: [torch.float32; [B, styles]], style vector.
             steps: [torch.long; [B]], diffusion steps, zero-based.
             mask_ratio: masking ratio for masked auto encoder.
@@ -175,8 +178,6 @@ class StyleDDPMVC(nn.Module):
         """
         # [B, E]
         embed = self.embedder(steps)
-        # [B, mel, T]
-        context = self.masked_encoder(context, ratio=mask_ratio)
         # [B, C, T]
         x = self.unet(signal, embed, styles, context)
         # [B, mel, T]

@@ -31,3 +31,11 @@ class Config:
         self.styles = 32
         self.style_blocks = 2
         self.style_kernels = 3
+
+        # context encoder
+        self.patch = 16
+        self.pe = 32
+        self.heads = 4
+        self.ffns = 256
+        self.dropout = 0.
+        self.layers = 4

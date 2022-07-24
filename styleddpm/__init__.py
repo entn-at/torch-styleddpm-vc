@@ -36,6 +36,16 @@ class StyleDDPMVC(nn.Module):
             config.style_stages,
             config.style_blocks)
 
+        self.contextualize = ContextEncoder(
+            config.mel,
+            config.patch,
+            config.pe,
+            config.channels,
+            config.heads,
+            config.ffns,
+            config.dropout,
+            config.layers)
+
         self.unet = UNet(
             config.mel,
             config.channels,

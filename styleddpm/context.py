@@ -9,10 +9,25 @@ from .embedder import Embedder
 class ContextEncoder(nn.Module):
     """Context encoder with masked spectrogram models.
     """
-    def __init__(self, mel: int, patch: int, pe: int, channels: int):
+    def __init__(self,
+                 mel: int,
+                 patch: int,
+                 pe: int,
+                 channels: int,
+                 heads: int,
+                 ffns: int,
+                 dropout: float,
+                 layers: int):
         """Initializer.
         Args:
+            mel: size of the mel filterbank.
             patch: size of the patch, equal on frequency axis and temporal axis.
+            pe: size of the positional encodings.
+            channels: size of the hidden channels.
+            haes: the number of the attention heads.
+            ffns: size of the feed-forward network hidden channels.
+            dropout: dropout rates.
+            layers: the number of the transformer encoder layers.
         """
         super().__init__()
         self.patch = patch
@@ -27,6 +42,15 @@ class ContextEncoder(nn.Module):
 
         self.proj_out = nn.Conv1d(
             int(mel * channels * patch ** -2), channels, 1)
+
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=channels,
+                nhead=heads,
+                dim_feedforward=ffns,
+                dropout=dropout,
+                batch_first=True),
+            layers)
 
     def forward(self, spec: torch.Tensor, ratio: Optional[float] = None) -> torch.Tensor:
         """Encode the contextual features.
@@ -49,10 +73,8 @@ class ContextEncoder(nn.Module):
         if ratio is not None:
             # [B, N'(=N x (1 - ratio)), C], [B, N', C]
             flat, selects = self.random_mask(flat, ratio)
-
-        # operation
-        # ...
-
+        # [B, N, C]
+        flat = self.encoder(flat)
         if ratio is not None:
             # [B, N, C]
             flat = self.scatter(flat, selects)

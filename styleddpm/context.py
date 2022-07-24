@@ -128,9 +128,9 @@ class ContextEncoder(nn.Module):
         # > [B, F, C // P, S, P2]
         # > [B, F(=mel // P) x C // P, T(=S x P)]
         # > [B, C, T]
-        return self.proj_out(flat \
-            .view(bsize, freqs, temps, channels // self.patch, self.patch) \
-            .permute(0, 1, 3, 2, 4) \
+        return self.proj_out(flat
+            .view(bsize, freqs, temps, channels // self.patch, self.patch)
+            .permute(0, 1, 3, 2, 4)
             .view(bsize, -1, temps * self.patch))
 
     def random_mask(self, flat: torch.Tensor, ratio: float) \

@@ -30,6 +30,7 @@ class UNet(nn.Module):
     """Spectrogram U-Net for noise estimator.
     """
     def __init__(self,
+                 mel: int,
                  channels: int,
                  kernels: int,
                  aux: int,
@@ -38,6 +39,7 @@ class UNet(nn.Module):
                  blocks: int):
         """Initializer.
         Args:
+            mel: size of the mel filter channels.
             channels: size of the hidden channels.
             kernels: size of the convolutional kernels.
             aux: size of the auxiliary channels.
@@ -46,6 +48,7 @@ class UNet(nn.Module):
             blocks: the number of the residual blocks in each stages.
         """
         super().__init__()
+        self.proj = nn.Conv1d(mel, channels, 1)
         self.dblocks = nn.ModuleList([
             AuxSequential([
                 AuxResidualBlock(channels * 2 ** i, kernels, aux)
@@ -86,7 +89,7 @@ class UNet(nn.Module):
             [torch.float32; [B, C, T]], transformed.
         """
         # [B, C, T]
-        x = inputs
+        x = self.proj(inputs)
         # (stages - 1) x [B, C x 2^i, T / 2^i]
         internals = []
         for dblock, downsample in zip(self.dblocks, self.downsamples):

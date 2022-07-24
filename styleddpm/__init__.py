@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 
 from .config import Config
+from .context import ContextEncoder
 from .embedder import Embedder
 from .encoder import StyleEncoder
 from .scheduler import Scheduler
@@ -21,28 +22,39 @@ class StyleDDPMVC(nn.Module):
         """
         super().__init__()
         self.steps = config.steps
-        self.proj_inputs = nn.Sequential(
-            nn.Conv1d(config.mel * 2, config.channels, 1),
-            nn.ReLU())
-
         self.embedder = Embedder(
-            config.pe, config.embeddings, config.steps, config.mappings)
+            config.pe,
+            config.embeddings,
+            config.steps,
+            config.mappings)
 
         self.encoder = StyleEncoder(
-            config.mel, config.styles, config.channels, config.kernels,
-            config.style_stages, config.style_blocks)
+            config.mel,
+            config.styles,
+            config.channels,
+            config.kernels,
+            config.style_stages,
+            config.style_blocks)
 
         self.unet = UNet(
-            config.channels, config.kernels, config.embeddings, config.styles,
-            config.stages, config.blocks)
+            config.mel,
+            config.channels,
+            config.kernels,
+            config.embeddings,
+            config.styles,
+            config.stages,
+            config.blocks)
 
         self.proj_outputs = nn.Sequential(
             nn.ReLU(),
             nn.Conv1d(config.channels, config.mel, 1))
 
         self.scheduler = Scheduler(
-            config.steps, config.internals, config.logit_min, config.logit_max)
-    
+            config.steps,
+            config.internals,
+            config.logit_min,
+            config.logit_max)
+
     def forward(self,
                 context: torch.Tensor,
                 styles: torch.Tensor,
@@ -150,11 +162,9 @@ class StyleDDPMVC(nn.Module):
         Returns:
             [torch.float32; [B, mel, T]], denoised signal.
         """
-        # [B, C, T]
-        x = self.proj_inputs(torch.cat([signal, context], dim=1))
         # [B, E]
         embed = self.embedder(steps)
         # [B, C, T]
-        x = self.unet(x, embed, styles)
+        x = self.unet(signal, embed, styles)
         # [B, mel, T]
         return self.proj_outputs(x)

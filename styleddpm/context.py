@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from .embedder import Embedder
+from .resblock import ResidualBlock
 
 
 class ContextEncoder(nn.Module):
@@ -16,7 +17,10 @@ class ContextEncoder(nn.Module):
                  heads: int,
                  ffns: int,
                  dropout: float,
-                 layers: int):
+                 layers: int,
+                 dec_kernels: int,
+                 dec_blocks: int,
+                 dec_layers: int):
         """Initializer.
         Args:
             mel: size of the mel filterbank.
@@ -26,6 +30,9 @@ class ContextEncoder(nn.Module):
             ffns: size of the feed-forward network hidden channels.
             dropout: dropout rates.
             layers: the number of the transformer encoder layers.
+            dec_kernels: size of the convolutional kernels.
+            dec_blocks: the number of the convolutional blocks between residual connections.
+            dec_layers: the number of the decoder blocks. 
         """
         super().__init__()
         self.patch = patch
@@ -50,6 +57,10 @@ class ContextEncoder(nn.Module):
                 dropout=dropout,
                 batch_first=True),
             layers)
+
+        self.decoder = nn.Sequential(*[
+            ResidualBlock(mel, dec_kernels, dec_blocks)
+            for _ in range(dec_layers)])
 
     def forward(self, spec: torch.Tensor, ratio: Optional[float] = None) -> torch.Tensor:
         """Encode the contextual features.

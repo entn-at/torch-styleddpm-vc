@@ -43,7 +43,10 @@ class StyleDDPMVC(nn.Module):
             config.heads,
             config.ffns,
             config.dropout,
-            config.layers)
+            config.layers,
+            config.dec_kernels,
+            config.dec_blocks,
+            config.dec_layers)
 
         self.unet = UNet(
             config.mel,

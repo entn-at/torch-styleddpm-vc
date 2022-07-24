@@ -40,3 +40,6 @@ class Config:
         self.ffns = 256
         self.dropout = 0.
         self.layers = 4
+        self.dec_kernels = 3
+        self.dec_blocks = 2
+        self.dec_layers = 2

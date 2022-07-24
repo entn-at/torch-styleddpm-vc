@@ -97,29 +97,33 @@ class TrainingWrapper:
         mean, std = self.model.diffusion(mel, steps)
         # [B, mel, T]
         mel_t = mean + torch.randn_like(mean) * std[:, None, None]
+        # [B, mel, T], contextualized
+        mel_c = self.model.masked_encoder(mel, ratio=self.config.train.mask_ratio)
         # [B, mel, T]
-        mel_0 = self.model.denoise(mel_t, mel, style, steps)
+        mel_0 = self.model.denoise(mel_t, mel_c, style, steps)
         # []
         noise_estim = F.mse_loss(mel, mel_0)
 
         ## 2. Cycle consistency
-        # [B, mel, T], unpaired generation
+        # [B, mel, T], unpaired generation, unmask the context vector for baseline.
         unit_0 = self.model.denoise(
             torch.randn_like(mel),
-            mel,
+            self.model.masked_encoder(mel),
             style[indices],
             torch.tensor([self.config.model.steps] * bsize, device=mel.device))
         # [B, mel, T]
         mean, std = self.model.diffusion(unit_0, steps)
         # [B, mel, T]
         unit_t = mean + torch.randn_like(mean) * std[:, None, None]
+        # [B, mel, T]
+        unit_c = self.model.masked_encoder(unit_0, ratio=self.config.train.mask_ratio)
         # []
         unit_estim = F.mse_loss(
-            unit_0, self.model.denoise(unit_t, unit_0, style[indices], steps))
+            unit_0, self.model.denoise(unit_t, unit_c, style[indices], steps))
         # []
         cycle_estim = \
-            F.mse_loss(mel, self.model.denoise(mel_t, unit_0, style, steps)) + \
-            F.mse_loss(unit_0, self.model.denoise(unit_t, mel, style[indices], steps))
+            F.mse_loss(mel, self.model.denoise(mel_t, unit_c, style, steps)) + \
+            F.mse_loss(unit_0, self.model.denoise(unit_t, mel_c, style[indices], steps))
 
         ## 3. Style reconstruction
         def contrast(a, b):

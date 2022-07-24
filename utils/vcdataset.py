@@ -10,7 +10,7 @@ import speechset
 from speechset.speeches.speechset import SpeechSet
 
 
-class VCDataset(SpeechSEt):
+class VCDataset(SpeechSet):
     """ID, Pitch-wrapper for voice conversion dataset support.
     """
     def __init__(self,

@@ -5,11 +5,12 @@ from styleddpm.config import Config as ModelConfig
 class TrainConfig:
     """Configuration for training loop.
     """
-    def __init__(self, sr: int, hop: int):
+    def __init__(self, sr: int, hop: int, patch: int):
         """Initializer.
         Args:
             sr: sample rate.
             hop: stft hop length.
+            patch: size of the patch.
         """
         # optimizer
         self.learning_rate = 1e-4
@@ -27,8 +28,14 @@ class TrainConfig:
         # train iters
         self.epoch = 1000
 
+        # mask ratio
+        self.mask_ratio = 0.5
+
         # segment length
-        self.seglen = int(sr * 0.5) // hop
+        sec = 1.
+        frames = int(sr * sec) // hop
+        # quantize with patch size
+        self.seglen = frames // patch * patch
 
         # path config
         self.log = './log'
@@ -46,8 +53,8 @@ class Config:
     """
     def __init__(self):
         self.data = DataConfig(batch=None)
-        self.train = TrainConfig(self.data.sr, self.data.hop)
         self.model = ModelConfig(self.data.mel)
+        self.train = TrainConfig(self.data.sr, self.data.hop, self.model.patch)
 
     def dump(self):
         """Dump configurations into serializable dictionary.

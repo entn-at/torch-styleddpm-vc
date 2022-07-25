@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 from .config import Config
 from .context import ContextEncoder
@@ -71,13 +72,15 @@ class StyleDDPMVC(nn.Module):
     def forward(self,
                 context: torch.Tensor,
                 styles: torch.Tensor,
-                signal: Optional[torch.Tensor] = None) \
+                signal: Optional[torch.Tensor] = None,
+                use_tqdm: bool = False) \
             -> Tuple[torch.Tensor, List[np.ndarray]]:
         """Generated waveform conditioned on mel-spectrogram.
         Args:
             context: [torch.float32; [B, mel, T]], context mel-spectrogram.
             styles: [torch.float32; [B, mel, T] or [B, styles]], style vectors.
             signal: [torch.float32; [B, mel, T]], initial noise.
+            use_tqdm: use tqdm range or not.
         Returns:
             [torch.float32; [B, mel, T]], denoised result.
             S x [np.float32; [B, mel, T]], internal representations.
@@ -92,7 +95,10 @@ class StyleDDPMVC(nn.Module):
         # S x [B, mel, T]
         ir = [signal.cpu().detach().numpy()]
         # zero-based step
-        for step in range(self.steps - 1, -1, -1):
+        ranges = range(self.steps - 1, -1, -1)
+        if use_tqdm:
+            ranges = tqdm(ranges)
+        for step in ranges:
             # [1]
             step = torch.tensor([step], device=signal.device)
             # [B, mel, T], [B]

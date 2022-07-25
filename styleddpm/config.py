@@ -29,7 +29,7 @@ class Config:
         self.blocks = 2
 
         # style encoder
-        self.styles = 32
+        self.styles = 128
         self.style_blocks = 2
         self.style_kernels = 3
 

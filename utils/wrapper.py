@@ -177,6 +177,7 @@ class TrainingWrapper:
             'style-cont': style_cont.item(),
             'pitch-estim': pitch_estim.item()}
         return loss, losses, {
+            'alphas_bar': alphas_bar.detach().cpu().numpy(),
             'mel': mel.cpu().numpy(),
             'mel_t': mel_t.detach().cpu().numpy(),
             'mel_0': mel_0.detach().cpu().numpy(),

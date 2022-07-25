@@ -106,24 +106,26 @@ class TrainingWrapper:
 
         ## 2. Cycle consistency
         # [B, mel, T], unpaired generation, unmask the context vector for baseline.
-        unit_0 = self.model.denoise(
+        unit = self.model.denoise(
             torch.randn_like(mel),
             self.model.masked_encoder(mel),
             style[indices],
             torch.tensor([self.config.model.steps] * bsize, device=mel.device))
         # [B, mel, T]
-        mean, std = self.model.diffusion(unit_0, steps)
+        mean, std = self.model.diffusion(unit, steps)
         # [B, mel, T]
         unit_t = mean + torch.randn_like(mean) * std[:, None, None]
         # [B, mel, T]
-        unit_c = self.model.masked_encoder(unit_0, ratio=self.config.train.mask_ratio)
+        unit_c = self.model.masked_encoder(unit, ratio=self.config.train.mask_ratio)
+        # [B, mel, T]
+        unit_0 = self.model.denoise(unit_t, unit_c, style[indices], steps)
         # []
-        unit_estim = F.mse_loss(
-            unit_0, self.model.denoise(unit_t, unit_c, style[indices], steps))
+        unit_estim = F.mse_loss(unit, unit_0)
+        # [B, mel, T]
+        mel_0_unit_c = self.model.denoise(mel_t, unit_c, style, steps)
+        unit_0_mel_c = self.model.denoise(unit_t, mel_c, style[indices], steps)
         # []
-        cycle_estim = \
-            F.mse_loss(mel, self.model.denoise(mel_t, unit_c, style, steps)) + \
-            F.mse_loss(unit_0, self.model.denoise(unit_t, mel_c, style[indices], steps))
+        cycle_estim = F.mse_loss(mel, mel_0_unit_c) + F.mse_loss(unit, unit_0_mel_c)
 
         ## 3. Style reconstruction
         def contrast(a, b, i):
@@ -141,7 +143,7 @@ class TrainingWrapper:
         # [B], [B, styles]
         avgpit_re, style_re = self.model.encoder(mel_0)
         # [B], [B, styles]
-        avgpit_unit, style_unit = self.model.encoder(unit_0)
+        avgpit_unit, style_unit = self.model.encoder(unit)
         # []
         style_cont = \
             contrast(style, style_re, ids) + \
@@ -166,7 +168,7 @@ class TrainingWrapper:
             cycle_estim + \
             style_cont + pitch_estim + \
             mae_rctor
-        return loss, {
+        losses = {
             'sched': schedule_loss.item(),
             'mae-rctor': mae_rctor.item(),
             'noise-estim': noise_estim.item(),
@@ -174,3 +176,12 @@ class TrainingWrapper:
             'cycle-estim': cycle_estim.item(),
             'style-cont': style_cont.item(),
             'pitch-estim': pitch_estim.item()}
+        return loss, losses, {
+            'mel': mel.cpu().numpy(),
+            'mel_t': mel_t.detach().cpu().numpy(),
+            'mel_0': mel_0.detach().cpu().numpy(),
+            'unit': unit.detach().cpu().numpy(),
+            'unit_t': unit_t.detach().cpu().numpy(),
+            'unit_0': unit_0.detach().cpu().numpy(),
+            'mel_0_unit_c': mel_0_unit_c.detach().cpu().numpy(),
+            'unit_0_mel_c': unit_0_mel_c.detach().cpu().numpy()}

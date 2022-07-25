@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -192,3 +192,24 @@ class StyleDDPMVC(nn.Module):
         x = self.unet(signal, embed, styles, context)
         # [B, mel, T]
         return self.proj_outputs(x)
+    
+    def save(self, path: str, optim: Optional[torch.optim.Optimizer] = None):
+        """Save the models.
+        Args:
+            path: path to the checkpoint.
+            optim: optimizer, if provided.
+        """
+        dump = {'model': self.state_dict()}
+        if optim is not None:
+            dump['optim'] = optim.state_dict()
+        torch.save(dump, path)
+
+    def load(self, states: Dict[str, Any], optim: Optional[torch.optim.Optimizer] = None):
+        """Load from checkpoints.
+        Args:
+            states: state dict.
+            optim: optimizer, if provided.
+        """
+        self.load_state_dict(states['model'])
+        if optim is not None:
+            optim.load_state_dict(states['optim'])

@@ -19,7 +19,7 @@ Initialize the submodule and patch.
 
 ```bash
 git submodule init --update
-cd hifi-gan; patch -p0 < ../hifi-gan-diff
+cd hifi-gan; patch -p0 < ../hifigan-diff
 ```
 
 Download LibriTTS dataset from [openslr](https://openslr.org/60/)

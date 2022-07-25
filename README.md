@@ -3,7 +3,7 @@
 Torch implementation of StyleDDPM for voice conversion
 
 - StarGANv2-VC: A Diverse, Unsupervised, Non-parallel Framework for Natural-Sounding Voice Conversion, Li et al., 2021. [[arXiv:2107.10394](https://arxiv.org/abs/2107.10394)]
-- VDM: Variational diffusion models, Kingma et al., 2022. [[arXiv:2107.00630](https://arxiv.org/abs/2107.00630)]
+- VDM: Variational diffusion models, Kingma et al., 2021. [[arXiv:2107.00630](https://arxiv.org/abs/2107.00630)]
 - UNIT-DDPM: UNpaired Image Translation with Denoising Diffusion Probabilistic Models, Sasaki et al., 2021. [[arXiv:2104.05358](https://arxiv.org/abs/2104.05358)]
 - MAE: Masked Autoencoders Are Scalable Vision Learners, He et al., 2021. [[arXiv:2111.06377](https://arxiv.org/abs/2111.06377)]
 - StyleGAN2: Analyzing and Improving the Image Quality of StyleGAN, Karras et al., 2019. [[arXiv:1912.04958](https://arxiv.org/abs/1912.04958)]

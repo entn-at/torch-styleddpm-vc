@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 import torchaudio.functional as AF
 
 import speechset
@@ -114,8 +114,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-dir', default=None)
     parser.add_argument('--out-dir', default=None)
-    parser.add_argument('--num-proc', defulat=4, type=int)
-    parser.add_argument('--chunksize', default=1, typ=int)
+    parser.add_argument('--num-proc', default=4, type=int)
+    parser.add_argument('--chunksize', default=1, type=int)
     parser.add_argument('--device', default='cpu')
     args = parser.parse_args()
 

@@ -13,12 +13,12 @@ class TrainConfig:
             patch: size of the patch.
         """
         # optimizer
-        self.learning_rate = 1e-4
+        self.learning_rate = 1e-5
         self.beta1 = 0.9
         self.beta2 = 0.999
 
         # loader settings
-        self.batch = 8
+        self.batch = 32
         self.shuffle = True
         self.num_workers = 4
         self.pin_memory = True

@@ -11,7 +11,7 @@ Torch implementation of StyleDDPM for voice conversion
 
 ## Requirements
 
-Tested in python 3.9.12 conda environment.
+Tested in python 3.9.12 conda environment, ref [requirements](./requirements.txt).
 
 ## Usage
 

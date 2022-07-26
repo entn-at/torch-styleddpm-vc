@@ -76,12 +76,12 @@ class VCDataset(SpeechSet):
         lengths = np.array([len(spec) for _, _, spec in bunch], dtype=np.int32)
         # [B, T, mel]
         mel = np.stack(
-            [np.pad(spec, [0, lengths.max() - len(spec)]) for _, _, spec in bunch],
-            dtype=np.float32)
+                [np.pad(spec, [0, lengths.max() - len(spec)]) for _, _, spec in bunch]
+            ).astype(np.float32)
         # [B, T // hop]
         pitch = np.stack(
-            [np.pad(pitch, [0, lengths.max() - len(pitch)]) for _, pitch, _ in bunch],
-            dtype=np.float32)
+                [np.pad(pitch, [0, lengths.max() - len(pitch)]) for _, pitch, _ in bunch]
+            ).astype(np.float32)
         return ids, pitch, mel, lengths
 
 

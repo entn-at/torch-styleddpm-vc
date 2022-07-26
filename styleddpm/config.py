@@ -31,7 +31,7 @@ class Config:
         # style encoder
         self.styles = 128
         self.style_blocks = 2
-        self.style_kernels = 3
+        self.style_stages = 3
 
         # context encoder
         self.patch = 16

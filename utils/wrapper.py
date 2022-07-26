@@ -39,18 +39,17 @@ class TrainingWrapper:
         Args:
             bunch: input tensors.
                 ids: [np.long; [B]], auxiliary ids.
-                text: [np.long; [B, S]], text token sequence.
-                pitch: [np.float32; [B, T]], pitch sequence.
+                pitch: [np.float32; [B, T]], pitch.
                 mel: [np.float32; [B, T, mel]], mel spectrogram.
-                textlen: [np.long; [B]], text lengths.
-                mellen: [np.long; [B]], spectrogram lengths.
+                lengths: [np.long; [B]], spectrogram lengths.
         Returns:
             randomly segmented spectrogram and audios.
         """
-        # [B], [B, T], [B, T, mel], [B]
-        ids, pitch, mel, lengths = bunch
+        # prefilter
+        prefilter = bunch[-1] >= self.config.train.seglen
+        ids, pitch, mel, lengths = [i[prefilter] for i in bunch]
         # [B]
-        start = np.random.randint(lengths - self.config.train.seglen)
+        start = np.random.randint(lengths - self.config.train.seglen + 1)
         # [B, seglen]
         pitch = np.array(
             [p[s:s + self.config.train.seglen] for p, s in zip(pitch, start)])
@@ -150,13 +149,14 @@ class TrainingWrapper:
             contrast(style[indices], style_unit, ids[indices])
 
         ## 3. Average pitch estimation
+        def log_mse(a, b): return F.mse_loss(torch.log(a + 1e-5), torch.log(b + 1e-5))
         # [B], non-zero average
         avgpit_gt = pitch.sum(axis=-1) / (pitch > 0).sum(axis=-1).clamp_min(1)
         # [B]
         pitch_estim = \
-            F.mse_loss(avgpit_gt, avgpit) + \
-            F.mse_loss(avgpit_gt, avgpit_re) + \
-            F.mse_loss(avgpit_gt[indices], avgpit_unit)
+            log_mse(avgpit_gt, avgpit) + \
+            log_mse(avgpit_gt, avgpit_re) + \
+            log_mse(avgpit_gt[indices], avgpit_unit)
 
         ## 4. Masked autoencoder reconstruction
         # []

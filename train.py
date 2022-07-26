@@ -2,8 +2,6 @@ import argparse
 import json
 import os
 
-from colorama import Style
-
 import git
 import matplotlib.pyplot as plt
 import numpy as np

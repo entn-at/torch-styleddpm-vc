@@ -171,7 +171,7 @@ class Trainer:
                 # intermediate representation
                 for i, signal in enumerate(ir[::-1]):
                     self.test_log.add_image(
-                        f'test/p(z_{i}|z_{i + 1}))', signal[0], step)
+                        f'test/p(z_{i}|z_{i + 1}))', self.mel_img(signal[0]), step)
 
             self.model.save(f'{self.ckpt_path}_{epoch}.ckpt', self.optim)
 

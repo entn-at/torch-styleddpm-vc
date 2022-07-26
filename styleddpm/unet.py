@@ -80,6 +80,10 @@ class UNet(nn.Module):
                 for _ in range(blocks)])
             for i in range(stages - 2, -1, -1)])
 
+        self.proj_out = nn.Sequential(
+            nn.ReLU(),
+            nn.Conv1d(channels, mel, 1))
+
     def forward(self,
                 inputs: torch.Tensor,
                 aux: torch.Tensor,
@@ -87,12 +91,12 @@ class UNet(nn.Module):
                 context: torch.Tensor) -> torch.Tensor:
         """Spectrogram U-net.
         Args:
-            inputs: [torch.float32; [B, C(=channels), T]], input tensor, spectrogram.
+            inputs: [torch.float32; [B, mel, T]], input tensor, spectrogram.
             aux: [torch.float32; [B, A(=aux)]], auxiliary informations, times.
             styles: [torch.float32; [B, styles]], style vectors.
             context: [torch.float32; [B, mel, T]], contextualized vectors.
         Returns:
-            [torch.float32; [B, C, T]], transformed.
+            [torch.float32; [B, mel, T]], transformed.
         """
         # [B, C, T]
         x = self.proj(inputs)
@@ -111,28 +115,32 @@ class UNet(nn.Module):
         for i, ublock, upsample in zip(reversed(internals), self.ublocks, self.upsamples):
             # [B, C x 2^i, T / 2^i]
             x = ublock(upsample(x) + i, aux, styles)
-        # [B, C, T]
-        return x
+        # [B, mel, T]
+        return self.proj_out(x)
 
 
 if __name__ == '__main__':
     # Test for U-net
     def test():
         BSIZE = 2
-        CHANNELS = 16
+        MEL = 16
+        TIMESTEP = 32
         AUX = 8
         STYLES = 4
         unet = UNet(
-            channels=CHANNELS,
+            mel=MEL,
+            channels=32,
             kernels=3,
+            longrange=11,
             aux=AUX,
             styles=STYLES,
             stages=5,
             blocks=2)
-        inputs = torch.randn(BSIZE, CHANNELS, 64)
+        inputs = torch.randn(BSIZE, MEL, TIMESTEP)
         aux = torch.randn(BSIZE, AUX)
         styles = torch.randn(BSIZE, STYLES)
-        assert unet(inputs, aux, styles).shape == inputs.shape
+        context = torch.randn(BSIZE, MEL, TIMESTEP)
+        assert unet(inputs, aux, styles, context).shape == inputs.shape
         
         print('success')
 

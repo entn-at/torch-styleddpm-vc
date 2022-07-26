@@ -59,10 +59,6 @@ class StyleDDPMVC(nn.Module):
             config.stages,
             config.blocks)
 
-        self.proj_outputs = nn.Sequential(
-            nn.ReLU(),
-            nn.Conv1d(config.channels, config.mel, 1))
-
         self.scheduler = Scheduler(
             config.steps,
             config.internals,
@@ -188,10 +184,8 @@ class StyleDDPMVC(nn.Module):
         """
         # [B, E]
         embed = self.embedder(steps)
-        # [B, C, T]
-        x = self.unet(signal, embed, styles, context)
         # [B, mel, T]
-        return self.proj_outputs(x)
+        return self.unet(signal, embed, styles, context)
     
     def save(self, path: str, optim: Optional[torch.optim.Optimizer] = None):
         """Save the models.

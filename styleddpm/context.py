@@ -88,7 +88,7 @@ class ContextEncoder(nn.Module):
         flat = self.encoder(flat)
         if ratio is not None:
             # [B, N, C]
-            flat = self.scatter(flat, selects)
+            flat = self.scatter(flat, selects, freqs * temps)
         # [B, C, T]
         return self.reorder(flat, freqs, temps)
 
@@ -111,7 +111,7 @@ class ContextEncoder(nn.Module):
             spec
             .view(bsize, freqs, self.patch, temps, self.patch)
             .permute(0, 1, 3, 2, 4)
-            .view(bsize, freqs, temps, -1))
+            .reshape(bsize, freqs, temps, -1))
 
     def reorder(self, flat: torch.Tensor, freqs: int, temps: int) -> torch.Tensor:
         """Reorder the flattened embeddings to original temporal axis.
@@ -131,7 +131,7 @@ class ContextEncoder(nn.Module):
         return self.proj_out(flat
             .view(bsize, freqs, temps, channels // self.patch, self.patch)
             .permute(0, 1, 3, 2, 4)
-            .view(bsize, -1, temps * self.patch))
+            .reshape(bsize, -1, temps * self.patch))
 
     def random_mask(self, flat: torch.Tensor, ratio: float) \
             -> Tuple[torch.Tensor, torch.Tensor]:

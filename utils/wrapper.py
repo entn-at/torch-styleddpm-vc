@@ -110,7 +110,7 @@ class TrainingWrapper:
             torch.randn_like(mel),
             self.model.masked_encoder(mel),
             style[indices],
-            torch.tensor([self.config.model.steps] * bsize, device=mel.device))
+            torch.tensor([self.config.model.steps - 1] * bsize, device=mel.device))
         # [B, mel, T]
         mean, std = self.model.diffusion(unit, steps)
         # [B, mel, T]

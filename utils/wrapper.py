@@ -147,15 +147,22 @@ class TrainingWrapper:
             cont = confusion[arange, arange] - torch.logsumexp(
                 confusion.masked_fill(i[:, None] == i, -np.inf), dim=-1)
             # []
-            return -cont.mean()
+            positive = confusion.detach()[arange, arange].mean()
+            negative = confusion.detach()[i[:, None] != i].mean()
+            # []
+            return -cont.mean(), positive, negative
         # [B], [B, styles]
         avgpit_re, style_re = self.model.encoder(mel_0)
         # [B], [B, styles]
         avgpit_unit, style_unit = self.model.encoder(unit)
         # []
-        style_cont = \
-            contrast(style, style_re, ids) + \
-            contrast(style[indices], style_unit, ids[indices])
+        cont1, pos1, neg1 = contrast(style, style_re, ids)
+        cont2, pos2, neg2 = contrast(style[indices], style_unit, ids[indices]) 
+        # []
+        style_cont = cont1 + cont2
+        # only loggig purpose
+        style_pos = pos1 + pos2
+        style_neg = neg1 + neg2
 
         ## 3. Average pitch estimation
         def log_mse(a, b): return F.mse_loss(torch.log(a + 1e-5), torch.log(b + 1e-5))
@@ -168,8 +175,10 @@ class TrainingWrapper:
             log_mse(avgpit_gt[indices], avgpit_unit)
 
         ## 4. Masked autoencoder reconstruction
+        # [B, mel, T]
+        decoded = self.model.masked_encoder.decoder(mel_c)
         # []
-        mae_rctor = F.mse_loss(mel, self.model.masked_encoder.decoder(mel_c))
+        mae_rctor = F.mse_loss(mel, decoded)
 
         # total loss
         loss = schedule_loss + \
@@ -185,7 +194,9 @@ class TrainingWrapper:
             'consistency': consistency.item(),
             'cycle-estim': cycle_estim.item(),
             'style-cont': style_cont.item(),
-            'pitch-estim': pitch_estim.item()}
+            'pitch-estim': pitch_estim.item(),
+            'metric/style-pos': style_pos.item(),
+            'metric/style-neg': style_neg.item()}
         return loss, losses, {
             'alphas_bar': alphas_bar.detach().cpu().numpy(),
             'spec': {
@@ -197,4 +208,5 @@ class TrainingWrapper:
                 'unit_t': unit_t.detach().cpu().numpy(),
                 'unit_0': unit_0.detach().cpu().numpy(),
                 'mel_0_unit_c': mel_0_unit_c.detach().cpu().numpy(),
-                'unit_0_mel_c': unit_0_mel_c.detach().cpu().numpy()}}
+                'unit_0_mel_c': unit_0_mel_c.detach().cpu().numpy(),
+                'mae': decoded.detach().cpu().numpy()}}

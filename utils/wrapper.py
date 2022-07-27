@@ -104,12 +104,21 @@ class TrainingWrapper:
         noise_estim = F.mse_loss(mel, mel_0)
 
         ## 2. Cycle consistency
+        # [B]
+        last_step = torch.tensor([self.config.model.steps - 1] * bsize, device=mel.device)
         # [B, mel, T], unpaired generation, unmask the context vector for baseline.
         unit = self.model.denoise(
             torch.randn_like(mel),
             self.model.masked_encoder(mel),
             style[indices],
-            torch.tensor([self.config.model.steps - 1] * bsize, device=mel.device))
+            last_step)
+        cycle = self.model.denoise(
+            self.model.diffusion(mel, last_step)
+            self.model.masked_encoder(unit),
+            style,
+            last_step)
+        # []
+        consistency = F.mse_loss(cycle, mel)
         # [B, mel, T]
         mean, std = self.model.diffusion(unit, steps)
         # [B, mel, T]
@@ -165,7 +174,7 @@ class TrainingWrapper:
         # total loss
         loss = schedule_loss + \
             noise_estim + unit_estim + \
-            cycle_estim + \
+            consistency + cycle_estim + \
             style_cont + pitch_estim + \
             mae_rctor
         losses = {

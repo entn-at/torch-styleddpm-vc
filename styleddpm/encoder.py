@@ -57,4 +57,4 @@ class StyleEncoder(nn.Module):
         # [B, styles + 1], global average pool
         x = self.proj(self.neck(x).mean(dim=-1))
         # [B], [B, styles]
-        return x[:, 0], x[:, 1:]
+        return F.softplus(x[:, 0]), x[:, 1:]

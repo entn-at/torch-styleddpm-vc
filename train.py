@@ -110,30 +110,9 @@ class Trainer:
                         'common/learning-rate', self.optim.param_groups[0]['lr'], step)
 
                     if (it + 1) % (len(self.loader) // 50) == 0:
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/mel', self.mel_img(aux['mel'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/mel_t', self.mel_img(aux['mel_t'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/mel_0', self.mel_img(aux['mel_0'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/unit', self.mel_img(aux['unit'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/unit_t', self.mel_img(aux['unit_t'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/unit_0', self.mel_img(aux['unit_0'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/mel_0_unit_c', self.mel_img(aux['mel_0_unit_c'][Trainer.LOG_IDX]), step)
-                        self.train_log.add_image(
-                            # [3, M, T]
-                            'train/unit_0_mel_c', self.mel_img(aux['unit_0_mel_c'][Trainer.LOG_IDX]), step)
+                        for key, spec in aux['spec'].items():
+                            self.train_log.add_image(
+                                f'train/{key}', self.mel_img(spec[Trainer.LOG_IDX]), step)
                         # scheduler plot
                         fig = plt.figure()
                         ax = fig.add_subplot(1, 1, 1)

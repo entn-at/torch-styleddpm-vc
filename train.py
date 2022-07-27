@@ -94,7 +94,7 @@ class Trainer:
                     pbar.set_postfix({'loss': loss.item(), 'step': step})
 
                     for key, val in losses.items():
-                        self.train_log.add_scalar(f'loss/{key}', val, step)
+                        self.train_log.add_scalar(key, val, step)
 
                     with torch.no_grad():
                         grad_norm = np.mean([
@@ -126,7 +126,7 @@ class Trainer:
                         losses[key].append(val)
                 # test log
                 for key, val in losses.items():
-                    self.test_log.add_scalar(f'loss/{key}', np.mean(val), step)
+                    self.test_log.add_scalar(key, np.mean(val), step)
 
                 # wrap last bunch
                 # [B], [B, seglen], [B, mel, seglen]

@@ -187,14 +187,14 @@ class TrainingWrapper:
             style_cont + pitch_estim + \
             mae_rctor
         losses = {
-            'sched': schedule_loss.item(),
-            'mae-rctor': mae_rctor.item(),
-            'noise-estim': noise_estim.item(),
-            'unit-estim': unit_estim.item(),
-            'consistency': consistency.item(),
-            'cycle-estim': cycle_estim.item(),
-            'style-cont': style_cont.item(),
-            'pitch-estim': pitch_estim.item(),
+            'loss/sched': schedule_loss.item(),
+            'loss/mae-rctor': mae_rctor.item(),
+            'loss/noise-estim': noise_estim.item(),
+            'loss/unit-estim': unit_estim.item(),
+            'loss/consistency': consistency.item(),
+            'loss/cycle-estim': cycle_estim.item(),
+            'loss/style-cont': style_cont.item(),
+            'loss/pitch-estim': pitch_estim.item(),
             'metric/style-pos': style_pos.item(),
             'metric/style-neg': style_neg.item()}
         return loss, losses, {

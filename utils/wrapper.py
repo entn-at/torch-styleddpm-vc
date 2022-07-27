@@ -113,7 +113,7 @@ class TrainingWrapper:
             style[indices],
             last_step)
         cycle = self.model.denoise(
-            self.model.diffusion(mel, last_step)
+            torch.randn_like(mel),
             self.model.masked_encoder(unit),
             style,
             last_step)
@@ -182,16 +182,19 @@ class TrainingWrapper:
             'mae-rctor': mae_rctor.item(),
             'noise-estim': noise_estim.item(),
             'unit-estim': unit_estim.item(),
+            'consistency': consistency.item(),
             'cycle-estim': cycle_estim.item(),
             'style-cont': style_cont.item(),
             'pitch-estim': pitch_estim.item()}
         return loss, losses, {
             'alphas_bar': alphas_bar.detach().cpu().numpy(),
-            'mel': mel.cpu().numpy(),
-            'mel_t': mel_t.detach().cpu().numpy(),
-            'mel_0': mel_0.detach().cpu().numpy(),
-            'unit': unit.detach().cpu().numpy(),
-            'unit_t': unit_t.detach().cpu().numpy(),
-            'unit_0': unit_0.detach().cpu().numpy(),
-            'mel_0_unit_c': mel_0_unit_c.detach().cpu().numpy(),
-            'unit_0_mel_c': unit_0_mel_c.detach().cpu().numpy()}
+            'spec': {
+                'mel': mel.cpu().numpy(),
+                'mel_t': mel_t.detach().cpu().numpy(),
+                'mel_0': mel_0.detach().cpu().numpy(),
+                'unit': unit.detach().cpu().numpy(),
+                'cycle': cycle.detach().cpu().numpy(),
+                'unit_t': unit_t.detach().cpu().numpy(),
+                'unit_0': unit_0.detach().cpu().numpy(),
+                'mel_0_unit_c': mel_0_unit_c.detach().cpu().numpy(),
+                'unit_0_mel_c': unit_0_mel_c.detach().cpu().numpy()}}

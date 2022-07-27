@@ -161,8 +161,8 @@ class TrainingWrapper:
         # []
         style_cont = cont1 + cont2
         # only loggig purpose
-        style_pos = pos1 + pos2
-        style_neg = neg1 + neg2
+        style_pos = (pos1 + pos2) / 2.
+        style_neg = (neg1 + neg2) / 2.
 
         ## 3. Average pitch estimation
         def log_mse(a, b): return F.mse_loss(torch.log(a + 1e-5), torch.log(b + 1e-5))

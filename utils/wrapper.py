@@ -146,7 +146,7 @@ class TrainingWrapper:
             # [B], diagonal selection and negative case contrast
             cont = confusion[arange, arange] - torch.logsumexp(
                 confusion.masked_fill(i[:, None] == i, -np.inf), dim=-1)
-            # []
+            # [], metric purpose, do not use on train
             positive = confusion.detach()[arange, arange].mean()
             negative = confusion.detach()[i[:, None] != i].mean()
             # []
